@@ -48,27 +48,40 @@ void setup() {
 }
 
 void loop() {
-  readValue();
+  previousHumidity = MIN_FLOAT_VALUE;
+  previousTemperature = MIN_FLOAT_VALUE;
+  previousPressure = MIN_FLOAT_VALUE;
+
   while (digitalRead(BUTTON) == LOW) {
+    humidity = dht.readHumidity();
+    temperature = dht.readTemperature();
+    pressure = bmp.readPressure();
 
-    //error = checkErrors();
-    //if (error)
-    //There has been an error, break while loop
-    //return;
 
-    //displayValue();
-    turnLeds();
+    if (isnan(humidity) || isnan(temperature) || isnan(pressure)) {
+      Serial.print("Error");
+      if (!error) {
+        lcd.clear();
+        lcd.setCursor(5, 0);
+        lcd.print("Error");
+        lcd.setCursor(0, 1);
+        lcd.print("Check the sensor");
+        error = true;
+      }
+      return;
+    }
+    error = false;
+    
+    displayValue();
   }
   nextState();
-  Serial.print("\n");
+  turnLeds();
   while (digitalRead(BUTTON) == HIGH)
     ;
 }
 
 void displayTemperature() {
-
   if (abs(temperature - previousTemperature) > 0.2) {
-    Serial.print("t");
     lcd.clear();
     lcd.print("Temperatura");
     lcd.setCursor(0, 1);
@@ -81,9 +94,7 @@ void displayTemperature() {
 }
 
 void displayPressure() {
-
   if (abs(pressure - previousPressure) > 100) {
-    Serial.print("p");
     lcd.clear();
     lcd.print("Pressure");
     lcd.setCursor(0, 1);
@@ -96,7 +107,6 @@ void displayPressure() {
 
 void displayHumidity() {
   if (abs(humidity - previousHumidity) > 0.2) {
-    Serial.print("h");
     lcd.clear();
     lcd.print("Humedad");
     lcd.setCursor(0, 1);
@@ -112,69 +122,27 @@ void turnLeds() {
     digitalWrite(led1, HIGH);
     digitalWrite(led2, LOW);
     digitalWrite(led3, LOW);
-    //previousTemperature, previousPressure = MIN_FLOAT_VALUE;
-    displayHumidity();
   } else if (state == 1) {
     digitalWrite(led1, LOW);
     digitalWrite(led2, HIGH);
     digitalWrite(led3, LOW);
-    previousHumidity, previousPressure = MIN_FLOAT_VALUE;
-    displayTemperature();
+
   } else if (state == 2) {
     digitalWrite(led1, LOW);
     digitalWrite(led2, LOW);
     digitalWrite(led3, HIGH);
-    previousTemperature, previousHumidity = MIN_FLOAT_VALUE;
+  }
+}
+
+void displayValue() {
+  if (digitalRead(led1) == 1) {
+    displayHumidity();
+  } else if (digitalRead(led2) == 1) {
+    displayTemperature();
+
+  } else if (digitalRead(led3) == 1) {
     displayPressure();
   }
-}
-
-/*void displayValue() {
-  if (state == 0) {
-
-  } else if (state == 1) {
-
-  } else if (state == 2) {
-
-  }
-}
-*/
-void readValue() {
-  if (state == 0) {
-    humidity = dht.readHumidity();
-    previousTemperature, previousPressure = MIN_FLOAT_VALUE;
-    temperature = NULL;
-    pressure = NULL;
-  } else if (state == 1) {
-    temperature = dht.readTemperature();
-    previousHumidity, previousPressure = MIN_FLOAT_VALUE;
-    pressure = NULL;
-    humidity = NULL;
-  } else if (state == 2) {
-    pressure = bmp.readPressure();
-    previousTemperature, previousHumidity = MIN_FLOAT_VALUE;
-    temperature = NULL;
-    humidity = NULL;
-  }
-}
-
-boolean checkErrors() {
-  if (isnan(humidity) && isnan(temperature) && isnan(pressure)) {
-    Serial.print("Error");
-    if (!error) {
-      lcd.clear();
-      lcd.setCursor(5, 0);
-      lcd.print("Error");
-      lcd.setCursor(0, 1);
-      lcd.print("Check the sensor");
-      error = true;
-    }
-    previousHumidity = MIN_FLOAT_VALUE;
-    previousTemperature = MIN_FLOAT_VALUE;
-    previousPressure = MIN_FLOAT_VALUE;
-    return true;
-  }
-  return false;
 }
 
 void nextState() {
