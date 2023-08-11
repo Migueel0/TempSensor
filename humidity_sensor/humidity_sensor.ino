@@ -22,13 +22,8 @@ const int led2 = 12;
 const int led3 = 11;
 const int BUTTON = 7;
 
-int buttonState = 0;
-int lastButtonState = 0;
-int state = 0;
-
-float humidity;
-float temperature;
-float pressure;
+int buttonState,lastButtonState,state = 0;
+float humidity,temperature,pressure = 0.00; 
 
 void setup() {
   Serial.begin(9600);
@@ -71,7 +66,6 @@ void loop() {
   delay(50);
 }
 
-
 void displayTemperature() {
   if (abs(temperature - previousTemperature) > 0.2) {
     lcd.clear();
@@ -108,7 +102,6 @@ void displayHumidity() {
     previousHumidity = humidity;
   }
 }
-
 
 void displayValue() {
   if (state == 0) {
