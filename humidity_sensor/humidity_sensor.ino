@@ -16,16 +16,14 @@ Adafruit_BMP085 bmp;
 const float MIN_FLOAT_VALUE = -3.4028235E+38;
 float previousTemperature, previousHumidity, previousPressure = MIN_FLOAT_VALUE;
 bool error = false;
+
 const int led1 = 13;
 const int led2 = 12;
 const int led3 = 11;
 const int BUTTON = 7;
-bool botonPresionado = false;
-int state = 0;
 
-float humidity;
-float temperature;
-float pressure;
+int buttonState,lastButtonState,state = 0;
+float humidity,temperature,pressure = 0.00; 
 
 void setup() {
   Serial.begin(9600);
@@ -48,36 +46,24 @@ void setup() {
 }
 
 void loop() {
-  previousHumidity = MIN_FLOAT_VALUE;
-  previousTemperature = MIN_FLOAT_VALUE;
-  previousPressure = MIN_FLOAT_VALUE;
 
-  while (digitalRead(BUTTON) == LOW) {
-    humidity = dht.readHumidity();
-    temperature = dht.readTemperature();
-    pressure = bmp.readPressure();
-
-
-    if (isnan(humidity) || isnan(temperature) || isnan(pressure)) {
-      Serial.print("Error");
-      if (!error) {
-        lcd.clear();
-        lcd.setCursor(5, 0);
-        lcd.print("Error");
-        lcd.setCursor(0, 1);
-        lcd.print("Check the sensor");
-        error = true;
-      }
-      return;
-    }
-    error = false;
-    
-    displayValue();
+  buttonState = digitalRead(BUTTON);
+  readValues();
+  
+  if (sensorError() || stateError()) {
+    displayError();
+    return;
   }
-  nextState();
-  turnLeds();
-  while (digitalRead(BUTTON) == HIGH)
-    ;
+  error = false;
+  
+  if (buttonState != lastButtonState && buttonState == HIGH) {
+    nextState();
+    turnLeds();
+    resetMinValues();
+  }
+  displayValue();
+  lastButtonState = buttonState;
+  delay(50);
 }
 
 void displayTemperature() {
@@ -117,32 +103,73 @@ void displayHumidity() {
   }
 }
 
+void displayValue() {
+  if (state == 0) {
+    displayHumidity();
+  } else if (state == 1) {
+    displayTemperature();
+  } else {
+    displayPressure();
+  }
+}
+
 void turnLeds() {
   if (state == 0) {
     digitalWrite(led1, HIGH);
-    digitalWrite(led2, LOW);
     digitalWrite(led3, LOW);
   } else if (state == 1) {
     digitalWrite(led1, LOW);
     digitalWrite(led2, HIGH);
-    digitalWrite(led3, LOW);
-
-  } else if (state == 2) {
-    digitalWrite(led1, LOW);
+  } else {
     digitalWrite(led2, LOW);
     digitalWrite(led3, HIGH);
   }
 }
 
-void displayValue() {
-  if (digitalRead(led1) == 1) {
-    displayHumidity();
-  } else if (digitalRead(led2) == 1) {
-    displayTemperature();
-
-  } else if (digitalRead(led3) == 1) {
-    displayPressure();
+void resetMinValues() {
+  if (state == 0) {
+    previousPressure = MIN_FLOAT_VALUE;
+  } else if (state == 1) {
+    previousHumidity = MIN_FLOAT_VALUE;
+  } else {
+    previousTemperature = MIN_FLOAT_VALUE;
   }
+}
+
+void readValues() {
+  if (state == 0) {
+    humidity = dht.readHumidity();
+  } else if (state == 1) {
+    temperature = dht.readTemperature();
+  } else {
+    pressure = bmp.readPressure();
+
+  }
+}
+
+boolean sensorError() {
+  boolean readError = false;
+  if (isnan(humidity) || isnan(temperature) || isnan(pressure)) {
+    readError = true;
+  }
+  return readError;
+}
+
+boolean stateError(){
+  return state > 2;
+}
+
+void displayError() {
+  String errorMessage = stateError() ? "Unexpected state" : "Check the sensor";
+  if (!error) {
+    lcd.clear();
+    lcd.setCursor(5, 0);
+    lcd.print("Error");
+    lcd.setCursor(0, 1);
+    lcd.print(errorMessage);
+    error = true;
+  }
+
 }
 
 void nextState() {
